@@ -148,6 +148,12 @@ Config.prototype.configure = function configure (config) {
   this.bearerOnly = resolveValue(config['bearer-only'] || config.bearerOnly || false);
 
   /**
+   * If specific protocol was provided.
+   * @type {String}
+   */
+  this.protocol = resolveValue(config.protocol);
+
+  /**
     * Formatted public-key.
     * @type {String}
     */
