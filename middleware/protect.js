@@ -15,14 +15,13 @@
  */
 'use strict';
 
-const UUID   = require('./../uuid');
-const Config = require('./auth-utils/config');
+const UUID = require('./../uuid');
 
 function forceLogin (keycloak, request, response) {
   let host = request.hostname;
   let headerHost = request.headers.host.split(':');
   let port = headerHost[1] || '';
-  let protocol = Config.protocol || request.protocol;
+  let protocol = keycloak.config.protocol || request.protocol;
   let hasQuery = ~(request.originalUrl || request.url).indexOf('?');
 
   let redirectUrl = protocol + '://' + host + (port === '' ? '' : ':' + port) + (request.originalUrl || request.url) + (hasQuery ? '&' : '?') + 'auth_callback=1';
