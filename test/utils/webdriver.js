@@ -17,15 +17,47 @@
 /**
  * An utility with the specifics for selenium
  */
-const phantomjs = require('phantomjs-prebuilt');
+const chrome = require('selenium-webdriver/chrome');
+const chromedriver = require('chromedriver');
 const webdriver = require('selenium-webdriver');
+const args = require('minimist')(process.argv.slice(2));
 const By = webdriver.By;
 const until = webdriver.until;
+const driver = createDriver();
 
-const driver = new webdriver.Builder()
-  .withCapabilities({ 'phantomjs.binary.path': phantomjs.path })
-  .forBrowser('phantomjs')
-  .build();
+function createDriver () {
+  chrome.setDefaultService(new chrome.ServiceBuilder(determineChromedriverPath()).build());
+
+  let o = new chrome.Options();
+  o.addArguments('disable-infobars');
+  o.addArguments('headless');
+
+  if (args.chromeArguments) {
+    let chromeArgs = args.chromeArguments.split(' ');
+    console.log('Using additional chrome arguments [' + chromeArgs + ']');
+    o.addArguments(chromeArgs);
+  }
+
+  o.setUserPreferences({ credential_enable_service: false });
+
+  let driver = new webdriver.Builder()
+    .setChromeOptions(o)
+    .forBrowser('chrome')
+    .build();
+
+  driver.getCapabilities().then((caps) => {
+    console.log('Chrome browser version: ' + caps.get('version'));
+    console.log('Chromedriver version: ' + caps.get('chrome').chromedriverVersion);
+  });
+
+  return driver;
+}
+
+function determineChromedriverPath () {
+  let path = args.chromedriverPath || (process.env.CHROMEDRIVER_PATH || chromedriver.path);
+  console.log('Using chromedriver from path: ' + path);
+  return path;
+}
 
 /* eslint-disable no-unused-vars */
 function waitForElement (locator, t) {
@@ -46,7 +78,7 @@ function ConsolePage () {}
 
 ConsolePage.prototype.get = function (port, resource) {
   resource = resource || '';
-  driver.get(`http://localhost:${port}${resource}`);
+  return driver.get(`http://localhost:${port}${resource}`);
 };
 
 ConsolePage.prototype.quit = function () {
@@ -90,7 +122,7 @@ ConsolePage.prototype.login = function (user, pass) {
   password.clear();
   password.sendKeys(pass);
 
-  driver.findElement(By.name('login')).click();
+  return driver.findElement(By.name('login')).then(webElement => webElement.click());
 };
 
 /**
@@ -118,8 +150,28 @@ ConsolePage.prototype.h1 = () => {
 
 var newPage = new ConsolePage();
 
+function RealmAccountPage () {}
+
+RealmAccountPage.prototype.get = function (port, realm) {
+  return driver.get(this.getUrl(port, realm));
+};
+
+RealmAccountPage.prototype.getUrl = function (port, realm) {
+  port = port || '8080';
+  realm = realm || 'test-realm';
+
+  return `http://127.0.0.1:${port}/auth/realms/${realm}/account`;
+};
+
+RealmAccountPage.prototype.logout = function () {
+  return driver.findElement(By.linkText('Sign Out')).then(webElement => webElement.click());
+};
+
+var realmAccountPage = new RealmAccountPage();
+
 module.exports = {
   driver: driver,
   webdriver: webdriver,
-  newPage: newPage
+  newPage: newPage,
+  realmAccountPage: realmAccountPage
 };
